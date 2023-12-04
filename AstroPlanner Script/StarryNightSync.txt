@@ -1,0 +1,62 @@
+//- Syncs Starry Night's target or position to the selected object in AstroPlanner.
+//- Uses the object's ID. If this is not found in Starry Night then the object's position is used.
+//- The script maintains the current Starry Night FOV.
+//-
+//- Prerequisites
+//-
+//- Developed and tested on Windows 11 with Starry Night Pro 8.1
+//- AstroPlanner 2.4b25
+//-
+//- 1. The Starry Night Remote Control plugin must be installed on the system.
+//- Please download the plugin from GitHub(https://github.com/Xio1996/RemoteControl)
+//-
+//- USAGE
+//- 1. Add object(s) to an AstroPlanner plan.
+//- 2. Start Starry Night
+//- 3. Select an object in the plan and run the script.
+//- 4. Starry Night will show the object and a voice prompt will confirm.
+//-
+//- Allocate a shortcut for easy and fast access.
+//-
+//- Version 0.1: Initial release.
+
+//# Author: Pete Gallop
+//# Category: General
+//# MinVersion: 2.4b25
+//# Keywords: Starry Night, Remote Control
+
+// CHANGE THIS PATH
+// The filepath the remote control plugin monitors for new commands. Must be the same as configured in the plugins configuration file
+// "RemoteControl_Win32.ini" found in the Starry Night "Plug-ins" folder.
+dim StarryNightCmdFilepath as string ="D:\StarryNightMsg\snmsg.txt"
+
+function SyncStarryNight(sID as string, dblRA as double, dblDec as double) as boolean
+	dim bSuccess as boolean = true
+	dim sCmd as string
+	
+	// Create the Starry Night Remote Control Command
+	sCmd = "target|" + sID + "|" + DoubleToStr(dblRA) + "|" + DoubleToStr(dblDec) + "|0"
+	
+	dim apttxtFile as APTextFile = APTextFile.WriteFileUsingPath(StarryNightCmdFilepath, true)
+	apttxtFile.WriteLine(sCmd)
+	apttxtFile.Close()
+	
+	Speak(sID + " selected")
+	
+	return bSuccess
+	
+end function
+
+sub main()
+	
+	dim obj as APPlanObject = Plan().SelectedObject
+	
+	DebugOff()
+	
+	// Check we have a selected object in AstroPlanner
+	if obj<>nil then
+		Call SyncStarryNight(obj.ID, obj.RA, obj.Dec)
+	else
+		Speak("No object selected")
+	end if
+end sub
