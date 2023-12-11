@@ -163,6 +163,7 @@ static bool write_file(const std::string& path, const std::string& content)
 		if (file)
 		{
 			file << content;
+			file.flush();
 			file.close();
 			bRes = true;
 		}
@@ -305,12 +306,67 @@ static void doAbout(void)
 	MessageBox(NULL, sMessage.c_str(), _sAlertTitle.c_str(), (MB_OK & MB_ICONINFORMATION | MB_APPLMODAL));
 }
 
+static void GetSelectedObject()
+{
+	try
+	{
+		PSelection* psObject = new PSelection;
+		std::string sMsg = "";
+
+		if (sn_GetPSelection(0, psObject) == snNoErr)
+		{
+			std::string sObjectName(pToCStr(psObject->fObjectName));
+			std::string sObjectType(pToCStr(psObject->fObjectType));
+			std::string sObjectConst(pToCStr(psObject->fConstellationName));
+
+			// Get the object's position. Conversion from JNOW radian to J2000 in degrees
+			PXYZCoordinates* pXYZIn = new PXYZCoordinates;
+			PXYZCoordinates* pXYZOut = new PXYZCoordinates;
+			PSphericalCoordinates* pscIn = new PSphericalCoordinates;
+			PSphericalCoordinates* pscOut = new PSphericalCoordinates;
+			pscIn->ra = psObject->fRightAscension;
+			pscIn->dec = psObject->fDeclination;
+			pscIn->radius = 1;
+
+			sn_SphericalToXYZ(*pscIn, pXYZIn);
+
+			sn_CoordinateConversion(0, kSNCelestialJNowSystem, kSNCelestialJ2000System, *pXYZIn, pXYZOut);
+
+			sn_XYZToSpherical(*pXYZOut, pscOut);
+
+			// Output "Name|RA2000|Dec2000|RANow|DecNow|Alt|Az|Mag|Size" All positions and size in degrees.
+			sMsg = sObjectName + "|" + sObjectType + "|";
+			sMsg += std::to_string(pscOut->ra * HR_PER_RAD) + "|" + std::to_string(pscOut->dec * DEG_PER_RAD) + "|";
+			sMsg += std::to_string(psObject->fRightAscension * HR_PER_RAD) + "|" + std::to_string(psObject->fDeclination * DEG_PER_RAD) + "|";
+			sMsg += std::to_string(psObject->fAlt * DEG_PER_RAD) + "|" + std::to_string(psObject->fAz * DEG_PER_RAD) + "|";
+			sMsg += std::to_string(psObject->fMagnitude) + "|" + std::to_string(psObject->fAngularSize * DEG_PER_RAD);
+
+			delete pXYZIn, pXYZOut, pscIn, pscOut;
+			 
+		}
+		else
+		{
+			sMsg = "NOSELECTION";
+		}
+
+		delete psObject;
+
+		// Write the selected objects data or 'NOSELECTION' 
+		write_file(_sOutFile, sMsg);
+
+		sMsg.clear();
+	}
+	catch (...)
+	{
+	}
+}
+
 // Starry Night calls the doOperation function with the op_Idle flag.
 // We do our thing when Starry Night or the user is not doing anything (idle).
 static short doIdle(PEvent *p)
 {
 	short iRes = 0;	// Assume success (our retval)
-	snErr Err; // Error/success code returned from sn_xxxxxx calls
+	snErr Err = snNoErr; // Error/success code returned from sn_xxxxxx calls
 
 	p->fOutOperation = out_DoNothing;	// Assume no-op
 	p->fOutParams = NULL;	
@@ -345,120 +401,95 @@ static short doIdle(PEvent *p)
 			// Process the command
 			if (sCmd == "target")
 			{
-				PSelection obj;
+				PSelection* obj = new PSelection;
 				pStr255 pstrName, pstrLayer;
 
 				// Process the command to obtain the ID, RA, Dec & FOV in the correct format for SN
 				cToPstr((char*)v[1].data(), pstrName);
 				cToPstr("All", pstrLayer);
 
-				PXYZCoordinates pXYZ;
-				PSphericalCoordinates pSC;
+				PXYZCoordinates *pXYZ = new PXYZCoordinates;
+				PSphericalCoordinates *pSC = new PSphericalCoordinates;
 
 				// Convert from RA decimal hours degrees and Dec decimal degrees
-				pSC.ra = std::stod(v[2].data()) * RAD_PER_HR;			// J2000 in radians
-				pSC.dec = std::stod(v[3].data()) * RAD_PER_DEG;			// J2000 in radians
+				pSC->ra = std::stod(v[2].data()) * RAD_PER_HR;			// J2000 in radians
+				pSC->dec = std::stod(v[3].data()) * RAD_PER_DEG;			// J2000 in radians
 
 				double dblFOV = std::stod(v[4].data()) * RAD_PER_DEG;	// in radians
 
-				pSC.radius = 1;	// StarryNightPlugins.h said to use 1 for star coordinates.
+				pSC->radius = 1;	// StarryNightPlugins.h said to use 1 for star coordinates.
 
 				// Convert our J2000 coordinates into a XYZ vector for Starry Night.
-				sn_SphericalToXYZ(pSC, &pXYZ);
+				sn_SphericalToXYZ(*pSC, pXYZ);
 
 				if (dblFOV > 0)
 				{
 					// Set the location (RA/Dec) first and set the FOV. 
 					// Do this because sn_SetFieldOfView does not appear to work and sn_FindObject will use its own default FOV for an object.
-					sn_CentreWindowAtCoords(p->fInWindow, kSNCelestialJ2000System, pXYZ, false, true, dblFOV, true);
+					sn_CentreWindowAtCoords(p->fInWindow, kSNCelestialJ2000System, *pXYZ, false, true, dblFOV, true);
 				}
 				else
 				{
 					// Set the location (RA/Dec) first but leave the current Starry Night FOV.
-					sn_CentreWindowAtCoords(p->fInWindow, kSNCelestialJ2000System, pXYZ, false, false, dblFOV, true);
+					sn_CentreWindowAtCoords(p->fInWindow, kSNCelestialJ2000System, *pXYZ, false, false, dblFOV, true);
 				}
 
 				// The sn_CentreWindowAtCoords call will lock onto the RA/Dec but if the user changes the FOV the lock is lost.
 				// if sn_FindObject finds the object then the lock is preserved even if the FOV is changed by the user.
 				// if the find fails then Starry Night maintains the previously called RA/Dec location.
-				Err = sn_FindObject(0, pstrName, pstrLayer, &obj, true, false, false, true);
+				Err = sn_FindObject(0, pstrName, pstrLayer, obj, true, false, false, true);
+
+				delete obj, pXYZ, pSC;
 			}
 			else if (sCmd == "altaz")
 			{
-				PXYZCoordinates pXYZ;
-				PSphericalCoordinates pSC;
+				PXYZCoordinates *pXYZ = new PXYZCoordinates;
+				PSphericalCoordinates *pSC = new PSphericalCoordinates;
 
-				pSC.ra = std::stod(v[2].data());		// Azimuth
-				pSC.ra = (360 - pSC.ra) * RAD_PER_DEG;	// Starry Night's internal Az is anti-clockwise so convert to clockwise.
+				pSC->ra = std::stod(v[2].data());		// Azimuth
+				pSC->ra = (360 - pSC->ra) * RAD_PER_DEG;	// Starry Night's internal Az is anti-clockwise so convert to clockwise.
 
-				pSC.dec = std::stod(v[1].data()) * RAD_PER_DEG;			// Altitude in radians
+				pSC->dec = std::stod(v[1].data()) * RAD_PER_DEG;			// Altitude in radians
 				double dblFOV = std::stod(v[3].data()) * RAD_PER_DEG;	// FOV in radians
 
-				pSC.radius = 1;	// StarryNightPlugins.h said to use 1 for star coordinates.
+				pSC->radius = 1;	// StarryNightPlugins.h said to use 1 for star coordinates.
 
 				// Convert our AltAz coordinates into a XYZ vector for Starry Night.
-				sn_SphericalToXYZ(pSC, &pXYZ);
+				sn_SphericalToXYZ(*pSC, pXYZ);
 
 				if (dblFOV > 0)
 				{
 					// Set the location (AltAz) first and set the FOV. 
 					// Do this because sn_SetFieldOfView does not appear to work.
-					sn_CentreWindowAtCoords(p->fInWindow, kSNAltAzSystem, pXYZ, false, true, dblFOV, true);
+					sn_CentreWindowAtCoords(p->fInWindow, kSNAltAzSystem, *pXYZ, false, true, dblFOV, true);
 				}
 				else
 				{
 					// Set the location (Alt/Az) first but leave the current Starry Night FOV.
-					sn_CentreWindowAtCoords(p->fInWindow, kSNAltAzSystem, pXYZ, false, false, dblFOV, true);
+					sn_CentreWindowAtCoords(p->fInWindow, kSNAltAzSystem, *pXYZ, false, false, dblFOV, true);
 				}
+
+				delete pXYZ;
+				delete pSC;
 			}
 			else if (sCmd == "fov")
 			{
-				PXYZCoordinates pcurrXYZ;
+				PXYZCoordinates *pcurrXYZ = new PXYZCoordinates;
 
 				double dblFOV = std::stod(v[1].data()) * RAD_PER_DEG;	// in radians
 				if (dblFOV > 0)
 				{
 					// Get the current position as we are only going to change the current FOV
-					sn_GetWindowCentreCoords(p->fInWindow, kSNCelestialJ2000System, &pcurrXYZ);
+					sn_GetWindowCentreCoords(p->fInWindow, kSNCelestialJ2000System, pcurrXYZ);
 					// Change the FOV but keep the same position
-					sn_CentreWindowAtCoords(p->fInWindow, kSNCelestialJ2000System, pcurrXYZ, false, true, dblFOV, true);
+					sn_CentreWindowAtCoords(p->fInWindow, kSNCelestialJ2000System, *pcurrXYZ, false, true, dblFOV, true);
 				}
+
+				delete pcurrXYZ;
 			}
 			else if (sCmd == "getselobj")
 			{
-				PSelection psObject;
-				std::string sMsg = "NOSELECTION";
-
-				if (sn_GetPSelection(p->fInWindow, &psObject) != snErr_NoSelection)
-				{
-					std::string sObjectName(pToCStr(psObject.fObjectName));
-					std::string sObjectType(pToCStr(psObject.fObjectType));
-					std::string sObjectConst(pToCStr(psObject.fConstellationName));
-
-					// Get the object's position. Conversion from JNOW radian to J2000 in degrees
-					PXYZCoordinates pXYZIn, pXYZOut;
-					PSphericalCoordinates pscIn, pscOut;
-
-					pscIn.ra = psObject.fRightAscension;
-					pscIn.dec = psObject.fDeclination;
-					pscIn.radius = 1;
-
-					sn_SphericalToXYZ(pscIn, &pXYZIn);
-
-					sn_CoordinateConversion(p->fInWindow, kSNCelestialJNowSystem, kSNCelestialJ2000System, pXYZIn, &pXYZOut);
-
-					sn_XYZToSpherical(pXYZOut, &pscOut);
-
-					// Output "Name|RA2000|Dec2000|RANow|DecNow|Alt|Az|Mag|Size" All positions and size in degrees.
-					sMsg = sObjectName + "|" + sObjectType + "|" + 
-										std::to_string(pscOut.ra * HR_PER_RAD) + "|" + std::to_string(pscOut.dec * DEG_PER_RAD) + "|" +
-										std::to_string(psObject.fRightAscension * HR_PER_RAD) + "|" + std::to_string(psObject.fDeclination * DEG_PER_RAD) + "|" +
-										std::to_string(psObject.fAlt * DEG_PER_RAD) + "|" + std::to_string(psObject.fAz * DEG_PER_RAD) + "|" +
-										std::to_string(psObject.fMagnitude) + "|" + std::to_string(psObject.fAngularSize * DEG_PER_RAD);
-				}
-
-				// Write the selected objects data or 'NOSELECTION'
-				write_file(_sOutFile, sMsg);
+				GetSelectedObject();
 			}
 			else if (sCmd == "getviewerloc")
 			{ 
@@ -491,6 +522,7 @@ static short doIdle(PEvent *p)
 					}
 				}
 				write_file(_sOutFile, sMsg);
+				sMsg.clear();
 			}
 			else if (sCmd == "getfov")
 			{
@@ -502,18 +534,22 @@ static short doIdle(PEvent *p)
 				}
 
 				write_file(_sOutFile, sMsg);
+				sMsg.clear();
 			}
 			else if (sCmd == "getcentrecoords")
 			{
-				PXYZCoordinates pcentreXYZ;
+				PXYZCoordinates *pcentreXYZ = new PXYZCoordinates;
 				std::string sMsg = "NOCENTERCOORDS";
 
-				if (sn_GetWindowCentreCoords(p->fInWindow, kSNOrientationSystem, &pcentreXYZ) == snNoErr)
+				if (sn_GetWindowCentreCoords(p->fInWindow, kSNOrientationSystem, pcentreXYZ) == snNoErr)
 				{
-					sMsg = std::to_string(pcentreXYZ.x) + "|" + std::to_string(pcentreXYZ.y) + "|" + std::to_string(pcentreXYZ.z);
+					sMsg = std::to_string(pcentreXYZ->x) + "|" + std::to_string(pcentreXYZ->y) + "|" + std::to_string(pcentreXYZ->z);
 				}
 
+				delete pcentreXYZ;
+
 				write_file(_sOutFile, sMsg);
+				sMsg.clear();
 			}
 			else if (sCmd == "gettime")
 			{
@@ -527,13 +563,14 @@ static short doIdle(PEvent *p)
 				}
 
 				write_file(_sOutFile, sMsg);
+				sMsg.clear();
 			}
 			else if (sCmd == "GetView")
 			{
 				// Returns all parameters that define a view in Starry Night
 				// The time, observer location, centre of the viewpoint and the FOV.
 
-				PXYZCoordinates pcentreXYZ;
+				PXYZCoordinates *pcentreXYZ = new PXYZCoordinates;
 				double dblLat = 0.0; double dblLng = 0.0; double dblElevAU = 0.0; 
 				double dblFOV = 0.0; double dblJulianTime = 0.0;
 				pBoolean bHovering = false;
@@ -557,7 +594,7 @@ static short doIdle(PEvent *p)
 
 					if (Err == snNoErr) 
 					{
-						if (sn_GetWindowCentreCoords(p->fInWindow, kSNOrientationSystem, &pcentreXYZ) == snNoErr)
+						if (sn_GetWindowCentreCoords(p->fInWindow, kSNOrientationSystem, pcentreXYZ) == snNoErr)
 						{
 							if (sn_GetFieldOfView(p->fInWindow, &dblFOV) == snNoErr)
 							{
@@ -572,22 +609,24 @@ static short doIdle(PEvent *p)
 						}
 					}
 				}
+				
+				delete pcentreXYZ;
 
 				write_file(_sOutFile, sMsg);
+				sMsg.clear();
 			}
+
+			// Remove the command file as we have finished processing.
+			DeleteFile(_sCommandFile.c_str());
 		}
 		catch (...)
 		{
+			ShowErrorDialog("Remote Control Plugin crashed!");
 		}
-
-		// Remove the command file as we have finished processing.
-		DeleteFile(_sCommandFile.c_str());
-		
 	}
 
 	return(iRes);
 }
-
 
 // The main function called by Starry Night to allow interaction with the plugin.
 SNCall short DoOperation(OperationT inOperation, void* ioParams)

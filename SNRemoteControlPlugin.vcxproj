@@ -44,13 +44,13 @@
     <_ProjectFileVersion>11.0.61030.0</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>..\..\..\..\..\Program Files %28x86%29\Starry Night Pro 8\Sky Data\Plug-ins</OutDir>
-    <IntDir>..\..\..\..\..\Program Files %28x86%29\Starry Night Pro 8\Sky Data\Plug-ins</IntDir>
+    <OutDir>..\..\..\..\..\Program Files %28x86%29\Starry Night Pro 8\Sky Data\Plug-ins\</OutDir>
+    <IntDir>.\Debug\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>SNRemoteControlPlugin_Win32</TargetName>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>.\Release\</OutDir>
+    <OutDir>..\..\..\..\..\Program Files %28x86%29\Starry Night Pro 8\Sky Data\Plug-ins\</OutDir>
     <IntDir>.\Release\</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>SNRemoteControlPlugin_Win32</TargetName>
@@ -78,6 +78,7 @@
       <ProgramDatabaseFile>.\Debug/SNRemoteControlPlugin.pdb</ProgramDatabaseFile>
       <ImportLibrary>.\Debug/SNRemoteControlPlugin.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
+      <OutputFile>$(OutDir)$(TargetName).plug</OutputFile>
     </Link>
     <Midl>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -94,11 +95,12 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
-      <Optimization>MaxSpeed</Optimization>
-      <InlineFunctionExpansion>OnlyExplicitInline</InlineFunctionExpansion>
+      <Optimization>Disabled</Optimization>
+      <InlineFunctionExpansion>Default</InlineFunctionExpansion>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;_USRDLL;ASCOMSCOPE_EXPORTS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <StringPooling>true</StringPooling>
-      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+      <StringPooling>
+      </StringPooling>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <PrecompiledHeader />
       <PrecompiledHeaderOutputFile>.\Release/SNRemoteControlPlugin.pch</PrecompiledHeaderOutputFile>
@@ -108,13 +110,20 @@
       <WarningLevel>Level3</WarningLevel>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <CompileAs>Default</CompileAs>
+      <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
     </ClCompile>
     <Link>
-      <OutputFile>.\Release\SNRemoteControlPlugin_Win32.plug</OutputFile>
+      <OutputFile>$(OutDir)$(TargetName).plug</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\Release/SNRemoteControlPlugin.pdb</ProgramDatabaseFile>
       <ImportLibrary>.\Release/SNRemoteControlPlugin.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <OptimizeReferences>
+      </OptimizeReferences>
+      <EnableCOMDATFolding>
+      </EnableCOMDATFolding>
     </Link>
     <Midl>
       <PreprocessorDefinitions>NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
