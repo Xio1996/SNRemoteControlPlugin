@@ -555,7 +555,7 @@ static short doIdle(PEvent *p)
 						}
 					}
 
-					if (Err == snNoErr)
+					if (Err == snNoErr) 
 					{
 						if (sn_GetWindowCentreCoords(p->fInWindow, kSNOrientationSystem, &pcentreXYZ) == snNoErr)
 						{
@@ -578,12 +578,6 @@ static short doIdle(PEvent *p)
 		}
 		catch (...)
 		{
-			// One catch to rule them all! Bale out and show the user what they sent us!
-			// Remove the problem file as op_idle never stops.
-			DeleteFile(_sCommandFile.c_str());
-
-			std::string sErrMsg = "Remote Control command processing failed.\r\nCmd =" + sEAACmd;
-			ShowErrorDialog((char*)sErrMsg.data());
 		}
 
 		// Remove the command file as we have finished processing.

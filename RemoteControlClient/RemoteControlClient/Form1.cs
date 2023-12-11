@@ -33,9 +33,19 @@ namespace RemoteControlClient
             {
                 txtFilePath.Text = sConfigFilePath;
                 txtCmdFilePath.Text = sRCCmdFilePath;
+                
+                if (File.Exists(sRCCmdFilePath))
+                {
+                    File.Delete(sRCCmdFilePath);
+                }
 
                 sRCOutFilePath = sRCCmdFilePath.Substring(0, sRCCmdFilePath.LastIndexOf(@"\") + 1) + "snrcout.txt";
                 txtOutFilePath.Text = sRCOutFilePath;
+
+                if (File.Exists(sRCOutFilePath))
+                { 
+                    File.Delete (sRCOutFilePath);
+                }
 
                 Properties.Settings.Default.ConfigFilePath = sConfigFilePath;
                 Properties.Settings.Default.Save();
@@ -83,6 +93,12 @@ namespace RemoteControlClient
         private void button1_Click(object sender, EventArgs e)
         {
             string sCmd = "";
+
+            if ( File.Exists(sRCCmdFilePath))
+            {
+                txtFilePath.Text = "WARNING - Starry Night still processing a command.";
+                return;
+            }
 
             switch (cbCmd.SelectedIndex)
             {
