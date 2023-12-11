@@ -182,7 +182,7 @@ namespace RemoteControlClient
 
                 while (!File.Exists(sRCOutFilePath))
                 {
-                    Thread.Sleep(250);
+                    Thread.Sleep(500);
                 }
 
                 txtGetInfo.Text = File.ReadAllText(sRCOutFilePath);

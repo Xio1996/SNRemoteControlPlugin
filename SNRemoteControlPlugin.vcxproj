@@ -44,8 +44,8 @@
     <_ProjectFileVersion>11.0.61030.0</_ProjectFileVersion>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>.\Debug\</OutDir>
-    <IntDir>.\Debug\</IntDir>
+    <OutDir>..\..\..\..\..\Program Files %28x86%29\Starry Night Pro 8\Sky Data\Plug-ins</OutDir>
+    <IntDir>..\..\..\..\..\Program Files %28x86%29\Starry Night Pro 8\Sky Data\Plug-ins</IntDir>
     <LinkIncremental>false</LinkIncremental>
     <TargetName>SNRemoteControlPlugin_Win32</TargetName>
   </PropertyGroup>
@@ -73,7 +73,6 @@
       <CompileAs>Default</CompileAs>
     </ClCompile>
     <Link>
-      <OutputFile>.\Debug\SNRemoteControlPlugin_Win32.plug</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\Debug/SNRemoteControlPlugin.pdb</ProgramDatabaseFile>
