@@ -1,57 +1,118 @@
-//==================================================================================================
-// RemoteControl.cpp
-// 
-// A remote control plugin for Starry Night 8, based on the ASCOM Focuser example in the plugin SDK.
-// Developed and tested on Windows 11 and Starry Night Pro 8.1.0.2049
-// 
-// Really simple, we communicate with the plugin via a text file. The plugin waits until the file exists and then processes the command content.
-// The file has a single line of bar (|) separated parameters e.g.  target|M90|3.30230606176374|0.229742052762574|1.1
-// The first parameter is the lowercase command.
+// RemoteControl
+// Starry Night Plugin - Remote Control
+//
+// A plugin for the astronomy application Starry Night.The plugin allows object view synchronisation between external apps such as AstroPlanner and Starry Night.The remote control plugin for Starry Night 8, was based on the ASCOM Focuser example in the Starry Night plugin SDK.Developed and tested on Windows 11 and Starry Night Pro 8.1.0.2049
+// Unlike many astronomy applications(such as Stellarium, AstroPlanner, CdC and TheSky etc) Starry Night 8 Pro does not have any way of allowing external apps to control its features.Such as finding and selecting objects by name or position, setting the field of view etc.However, Starry Night 8 does publish a Plugin SDK.This project is an experiment in writing a plugin that could integrate Starry Night Pro 8 into my EAA workflow.
+// The code is not robust and not well written but if you have a similar requirement, then it might be a help(hopefully not a hinderance) in developing your own Starry Night Plugin.Have fun!
+//
+// Overview.
+// Communication with the plugin is via a text file.The plugin waits until the file exists and then processes the command content.The file has a single line of bar(| ) separated parameters e.g.target | Polaris | 2.530195 | 89.26417 | 10 The first parameter is the lowercase command.It is a very simple communication method and allows easy access to the plugins features.
 //
 // Commands
+// target Command : Will move Starry Night to the specified object ID or if not found to the RA / DEC(J2000) location and change the FOV(0 FOV, keep current FOV)
 //
-// TARGET Command: Will move Starry Night to the specified object ID or if not found to the RA/DEC (J2000) location and change the FOV (0 FOV, keep current FOV)
+// target | ID | RA | Dec | FOV
+//
 // ID = The Starry Night object we wanto to move to.
-// RA = Decimal Hours, J2000, Dec = Degrees, J2000, FOV = Degrees
-// target|ID|RA|Dec|FOV	
+// RA = Decimal Hours(J2000)
+// Dec = Degrees(J2000)
+// FOV = Degrees
+// E.g.target | M13 | 16.69478 | 36.4598 | 5
 //
-// ALTAZ Command: Moves to the specified Alt/Az location and sets the FOV (0 FOV, keeps the current FOV)
-// Alt = Degrees, Az = Degrees, FOV = Degrees
-// altaz|Alt|Az|FOV
+// altaz Command : Moves to the specified Alt / Az location and sets the FOV(0 FOV, keeps the current FOV)
 //
-// FOV Command: changes SN's FOV (in degrees). The centre position is unchanged and a FOV of 0 is ignored.
+// altaz | Alt | Az | FOV
+//
+// Alt = Degrees
+// Az = Degrees
+// FOV = Degrees
+// E.g.altaz | 45 | 180 | 107
+//
+// fov Command : changes SN's FOV (in degrees). The centre position is unchanged and a FOV of 0 is ignored.
+//
+// fov | FOV
+//
 // FOV = degrees
-// fov|FOV
-// 
+// E.g.fov | 110
+//
+// The following 'get' commands will write their output to the 'snrout.txt' file in the same directory as specified for the 'snmsg.txt' file.
+//
+// getselobj Command : This returns information on the currently selected object.If no object is selected the message NOSELECTION is returned.
+//
+// Object Name | Object Type | RA(J2000) | Dec(J2000) | RA(JNOW) | Dec(JNOW) | Alt | Az | Magnitude | Size
+//
+// Object Name = The SN name for the current object.
+// Object Type = The SN object type.
+// RA(J2000) = J2000 coordinates in decimal hours(13h 30m = 13.5).
+// Dec(J2000) = J2000 coordinates in degrees.
+// RA(JNOW) = JNOW coordinates in degrees.
+// Dec(JNOW) = JNOW coordinates in degrees.
+// Alt = Local altitude in degrees.
+// Az = Local azimuth in degrees.
+// Magnitude = The magnitude(if any) of object.
+// Size = The size of an object in degrees.If none then 0 is returned.
+//
+// E.g.Polaris | Star with Exoplanet | 2.530292 | 89.264111 | 3.033089 | 89.364666 | 50.069680 | 0.096951 | 1.960000 | 0.000000
+//
+// getviewerloc Command : Returns the location of the observer in either planet lattitude / longitude or heliocentric coordinates.
+//
+// Planet | Lattitude | Longitude | Altitude | Coordinate System | Hovering
+//
+// Planet = The current planet or 'Helio' if using heliocentric coordinates.
+// Lattitude = Latitiude on planet or heliocentric coordinate in degrees.Longitude = Longitude on planet or heliocentric coordiante in degrees.Altitude = The altitude in astronomical units from the planets surface.Coordinate System = 901 Planetary, 902 Stationary location(heliocentric) Hovering = 0 not hovering(follows object rotation) or 1 hovering
+//
+// Earth | 51.204000 | -1.630000 | 0.000000 | 901 | 0
+//
+// getfov Command : Returns the current field of view in degrees.
+//
+// fov
+//
+// fov = The current field of view in degrees.
+//
+// 110.00000
+//
+// getcentrecoords Command : Returns the centre position of the view in x, y, z coordinates(radians) for the views current coordinate system(Options->Orientation menu item).
+//
+// x | y | z
+//
+// x = x coordiante in radians.
+// y = y coordinate in radians.
+// z = z coordinate in radians.
+// E.g. - 0.698544 | 0.147982 | 0.700098
+//
+// gettime Command : Returns the Julian time in univeral time(UT).
+//
+// JulianTime
+//
+// JulianTime = UT Julian Time
+//
+// 2460289.947557
+//
 // INSTALLATION
-// 
-// Place the "RemoteControl_Win32.plug" (plugin) and the "RemoteControl_Win32.ini" (configuration) files into the Starry Night plugins folder.
-// The plugins ("Plug-ins") folder resides in the Starry Night installation folder. Something like "C:\Program Files (x86)\Starry Night Pro 8\Sky Data\Plug-ins".
-// Edit the "RemoteControl_Win32.ini" file in a text editor. Provide the full path and filename to the file used to communicate with the plugin.
-// Something like "D:\StarryNightMsg\snmsg.txt". Choose a location that allows you and Starry Night to read/write and delete the file.
-// 
-// ABOUT Dialog
-// 
-// When Starry Night is running click on the Help->About Plug-in->Remote Control menu entry to bring up the About dialog.
-// The dialog checks that the settings file is present and displays the filepath read from the file. The plugin then checks that it
-// has the permissions to write and delete the file.
-// 
-// If the Remote Control entry is missing from the 'About Plug-in' menu then Starry Night did not recognise this plugin! 
-// Review the installation instructions. If you develop your own plugin then make sure the plugin filename ends "_Win32.plug"
-// 
-// ToDo
-// A better solution would be to communicate with the plugin via a TCP port or http call as is
-// done in other astronomy applications. The file method is simple and allows easy manual testing.
-// 
+//
+// Place the "RemoteControl_Win32.plug" (plugin) and the "RemoteControl_Win32.ini" (configuration)files into the Starry Night plugins folder.The plugins("Plug-ins") folder resides in the Starry Night installation folder.Something like "C:\Program Files (x86)\Starry Night Pro 8\Sky Data\Plug-ins".
+//
+// Edit the "RemoteControl_Win32.ini" file in a text editor.Provide the full path and filename to the file used to communicate with the plugin.Something like "C:\StarryNightMsg\snmsg.txt".Choose a location that allows you and Starry Night to read / write and delete the file.
+//
+// ABOUT Dialog(Checking Installation)
+//
+// When Starry Night is running click on the Help->About Plug - in->Remote Control menu entry to bring up the About dialog.The dialog checks that the settings file is present and displays the filepath read from the file.The plugin then checks that it has the permissions to write and delete the file.
+//
+// If the Remote Control entry is missing from the 'About Plug-in' menu then Starry Night did not recognise this plugin!Review the installation instructions.If you develop your own plugin then make sure the plugin filename ends "_Win32.plug"
+//
+// Remote Control Plugin Client
+//
+// To test the plugin there is a Windows desktop app to exercise the plugin's commands. It allows pre-defined commands and parameters to be sent to the Remote Control Plugin or user defined. It is included here for completness and is not required to use the remote control plugin.
+//
+// AstroPlanner Script
+//
+// A simple AstroPlanner script that synchronises the selected object in AstroPlanner with the selected object or position in Starry Night.
+//
+// TODO
+//
+// A better "real-world" solution would be to communicate with the plugin via a TCP port or http call as is done in other astronomy applications.
+//
 // This is a "happy days" implementation and needs hardening against failure and correcting the wrongs against coding!
-// 
-// ToDo now.
-// Get the current time (Julian date)
-// 
-// Tour functions
-// Get combination of location + Centre Coords + fov + time
-// Set combination of location + Centre Coords + fov + time
-// Set flow step and number of steps to animate view
 //==================================================================================================
 
 #include "RemoteControl.h"
@@ -191,7 +252,7 @@ bool TestCmdFile()
 static short initPlugin(PInitialize* p)
 {
 	p->fSuccess			= true;					// Assume success
-	p->fWantsMenuItem	= true;				// if this plug-in wants a menu command in settings menu
+	p->fWantsMenuItem	= true;					// if this plug-in wants a menu command in settings menu
 	p->fWantsIdleTime	= true;					// if true then plug-in receives op_Idle regularly
 	p->fWantsWindow		= false;				// true if the plug-in requires a window
 	p->fWindowVisible	= false;				// true if window is initially visible
