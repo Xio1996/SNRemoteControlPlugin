@@ -5,6 +5,8 @@ A plugin for the astronomy application <a href="https://www.starrynight.com/star
 <p>Unlike many astronomy applications (such as Stellarium, AstroPlanner, CdC and TheSky etc) Starry Night 8 Pro does not have any way of allowing external apps to control its features. Such as finding and selecting objects by name or position, setting the field of view etc. However, Starry Night 8 does publish a Plugin SDK. This project is an experiment in writing a plugin that could integrate Starry Night Pro 8 into my EAA workflow.</p>
 <p><b>The code is not robust and not well written but if you have a similar requirement, then it might be a help (hopefully not a hinderance) in developing your own Starry Night Plugin. Have fun!</b></p>
 
+<p><b>Xio1996/SNRemoteControlPlugin is licensed under <a href="https://github.com/Xio1996/SNRemoteControlPlugin/blob/master/LICENSE">The Unlicense</a></b></p>
+
 <b>Overview.</b><br/>
 Communication with the plugin is via a text file. The plugin waits until the file exists and then processes the command content.
 The file has a single line of bar (|) separated parameters e.g.  target|Polaris|2.530195|89.26417|10
